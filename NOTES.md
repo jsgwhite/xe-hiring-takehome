@@ -2,6 +2,10 @@
 
 Submission notes for the Rate Alerts take-home. **Track: backend depth.**
 
+**(This document is updated by AI as I did changes, I left text below unchanged even when incorrect, as it is interesting to see how accurate it can be. I added notes in brackets where it was wrong for interest. )**
+
+**(Here is the github link so you can see commits in more detail: https://github.com/jsgwhite/xe-hiring-takehome)**
+
 > This is a living document — I am updating it as I go rather than reconstructing it at the end, so
 > the reasoning is recorded while it is still fresh. The detailed audit that backs it up is in
 > [`docs/CODE_ANALYSIS.md`](docs/CODE_ANALYSIS.md).
@@ -24,6 +28,8 @@ Target is 2-3 hours. Actual:
 | **Total** | **~3h 35m** |
 
 Slightly over the 2–3h target. The extra time went to: (1) extensive frontend test coverage (~35 tests) where the budget was backend-focused, and (2) iterating on UX details (prefill on card click, auto-direction, rate display consistency, and code review findings). Both were worth the time.
+
+** (Measuring time on tasks is typically wrong with AI, or at least hard to measure, since about half the time is spent waiting and in many cases today I did other tasks just to come back and find it stuck on a prompt for a long time) **
 
 ---
 
@@ -224,6 +230,8 @@ Neither displaced core work.
 ## AI tools used
 
 **Claude Code (Claude Sonnet 5) in VS Code** for the whole session.
+
+**(In actual fact I started with Opus for planning, then as work progressed I explicitly told Claude to use a lower agent if it makes sense, it actually ended up using a combo of Opus, Sonnet and Haiku, and even a little Codex models when I ran out of usage mins)**
 
 How I used it, honestly:
 
