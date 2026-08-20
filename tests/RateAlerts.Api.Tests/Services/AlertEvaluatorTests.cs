@@ -89,6 +89,19 @@ public class AlertEvaluatorTests
         Assert.Equal(asOf, result.AsOf);
     }
 
+    [Fact]
+    public void Throws_when_the_rate_is_for_a_different_pair_than_the_alert()
+    {
+        // Otherwise a EUR/USD rate handed to a GBP/CAD alert would be accepted silently and produce
+        // a confident, wrong answer - Mid is just a decimal, nothing else would catch the mismatch.
+        var alert = AboveAlert(1.84m);
+        var wrongPairRate = new Rate(CurrencyPair.Parse("EUR/USD"), 1.08m, DateTimeOffset.UtcNow);
+
+        var exception = Assert.Throws<ArgumentException>(() => AlertEvaluator.Evaluate(alert, wrongPairRate));
+        Assert.Contains("EUR/USD", exception.Message);
+        Assert.Contains("GBP/CAD", exception.Message);
+    }
+
     [Theory]
     [InlineData(1.8399, false)]
     [InlineData(1.8400, false)]

@@ -20,6 +20,18 @@ public static class AlertEvaluator
 {
     public static AlertEvaluation Evaluate(Alert alert, Rate? rate)
     {
+        // Code review issue:
+        // A rate for the wrong pair would otherwise be silently accepted - Mid is just a decimal,
+        // nothing here would notice it came from EUR/USD while evaluating a GBP/CAD alert. Every
+        // current caller resolves the rate by alert.Pair already, so this should never fire; it's
+        // here so a future caller that gets the lookup wrong fails loudly instead of producing a
+        // confident, wrong answer.
+        if (rate is not null && rate.Pair != alert.Pair)
+        {
+            throw new ArgumentException(
+                $"Rate is for {rate.Pair}, but the alert is for {alert.Pair}.", nameof(rate));
+        }
+
         if (rate is null)
         {
             // Unknown, not "not triggered" - collapsing the two would make an upstream outage read
