@@ -158,7 +158,7 @@ describe('AlertsPanel', () => {
       const wrapper = mount(AlertsPanel)
       await flushPromises()
 
-      expect(wrapper.text()).toContain('evaluated at: 1.85')
+      expect(wrapper.text()).toContain('rate: 1.85')
     })
   })
 
