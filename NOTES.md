@@ -23,7 +23,6 @@ Target is 2-3 hours. Actual:
 | Code review, UI fixes, rate sync and display clarity | 25m |
 | **Total** | **~3h 35m** |
 
-
 Slightly over the 2–3h target. The extra time went to: (1) extensive frontend test coverage (~35 tests) where the budget was backend-focused, and (2) iterating on UX details (prefill on card click, auto-direction, rate display consistency, and code review findings). Both were worth the time.
 
 ---
