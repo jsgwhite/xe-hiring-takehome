@@ -97,4 +97,27 @@ public class CurrencyPairTests
     {
         Assert.Throws<ArgumentException>(() => CurrencyPair.Create("USD", "usd"));
     }
+
+    [Fact]
+    public void Create_returns_pair_with_valid_separate_codes()
+    {
+        var pair = CurrencyPair.Create("USD", "EUR");
+        Assert.NotNull(pair);
+        Assert.Equal("USD", pair.Base);
+        Assert.Equal("EUR", pair.Quote);
+    }
+
+    [Fact]
+    public void TryCreate_rejects_null_base()
+    {
+        Assert.False(CurrencyPair.TryCreate(null, "USD", out var pair));
+        Assert.Null(pair);
+    }
+
+    [Fact]
+    public void TryCreate_rejects_null_quote()
+    {
+        Assert.False(CurrencyPair.TryCreate("USD", null, out var pair));
+        Assert.Null(pair);
+    }
 }

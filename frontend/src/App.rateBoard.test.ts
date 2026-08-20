@@ -96,4 +96,23 @@ describe('loading rates', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
+
+  test('does not show updated timestamp when lastUpdated is empty', () => {
+    stubFetch([])
+    fakeState.lastUpdated = ''
+
+    const wrapper = mount(App)
+
+    expect(wrapper.find('.updated').exists()).toBe(false)
+  })
+
+  test('shows updated timestamp when lastUpdated is present', () => {
+    stubFetch([])
+    fakeState.lastUpdated = '12:34:56 PM'
+
+    const wrapper = mount(App)
+
+    expect(wrapper.find('.updated').exists()).toBe(true)
+    expect(wrapper.find('.updated').text()).toContain('Last updated 12:34:56 PM')
+  })
 })
