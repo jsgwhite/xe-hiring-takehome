@@ -109,6 +109,15 @@ values and `double` would be wrong.
 *(Updated as work lands.)*
 
 - **CI and test harness first** — so the feature could be built test-first.
+- **Rate fetching rebuilt behind `IRateProvider`.** `XeRateProvider` batches pairs sharing a base
+  currency into one upstream call and matches results by `quotecurrency` rather than array position
+  (finding 3), and treats an empty `to: []` as "unavailable" rather than crashing on it (finding 2).
+  `CachingRateProvider` decorates it with a short TTL so listing several alerts doesn't cost a
+  round-trip per alert. `FakeRateProvider` covers finding 1 — enabled only in Development via
+  `appsettings.Development.json`, and Program.cs refuses to honour it outside Development regardless
+  of config, so it can never mask real data anywhere else.
+  Measured end to end: `/api/rates` went from 2.75s to 1.07s on the real API (matches the ~1.1s
+  predicted from the raw batched call), and 2.6ms on a cache hit.
 
 ## What I deliberately left, and why
 
@@ -119,8 +128,10 @@ decision.
   no store is ever defined. I am leaving it: a 7-line `reactive` object is adequate for one
   component plus one panel, and adding a store to satisfy a TODO would be ceremony. On a
   backend-depth track, the depth belongs in the alert domain.
-- **The planted TODO at `vite.config.ts:15` (test coverage config).** Same reasoning — my testing
-  effort is on the backend for this track.
+- **The planted TODO at `vite.config.ts:15` (test coverage config)** — actually done, not left. A
+  coverage check showed `App.vue` fully covered on statements and 91.66% on branch (one untested
+  `v-if` path); closing that plus adding the `@vitest/coverage-v8` provider was cheap, so it made
+  the cut after all.
 - **`App.test.ts`'s structure.** One monolithic test asserting ~10 unrelated things, mixing
   `@testing-library/vue` with `@vue/test-utils`, using `setTimeout(0)` instead of `flushPromises`,
   and mutating state at L28-30 without ever asserting the result. It passes, and it is not my core
