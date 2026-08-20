@@ -315,6 +315,8 @@ describe('AlertsPanel', () => {
       await inputs[1].setValue('cad')
       await wrapper.vm.$nextTick()
 
+      await wrapper.find('input[type="number"]').setValue('')
+
       await wrapper.find('form').trigger('submit')
       await wrapper.vm.$nextTick()
 
@@ -322,7 +324,7 @@ describe('AlertsPanel', () => {
       expect(wrapper.text()).toContain('Threshold must be a positive number')
     })
 
-    test('adds created alert to list and clears form on success', async () => {
+    test('adds created alert to list and restores the default form on success', async () => {
       mockGetAlerts.mockResolvedValue([])
       mockCreateAlert.mockResolvedValue({
         id: '2',
@@ -351,9 +353,9 @@ describe('AlertsPanel', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('USD/CAD')
-      expect((inputs[0].element as HTMLInputElement).value).toBe('')
-      expect((inputs[1].element as HTMLInputElement).value).toBe('')
-      expect((numberInput.element as HTMLInputElement).value).toBe('')
+      expect((inputs[0].element as HTMLInputElement).value).toBe('USD')
+      expect((inputs[1].element as HTMLInputElement).value).toBe('CAD')
+      expect((numberInput.element as HTMLInputElement).value).toBe('1.3')
     })
 
     test('shows error message on createAlert failure', async () => {
@@ -562,6 +564,23 @@ describe('AlertsPanel', () => {
   })
 
   describe('form direction selection', () => {
+    test('changes direction based on the threshold relative to the selected current rate', async () => {
+      mockGetAlerts.mockResolvedValue([])
+
+      const wrapper = mount(AlertsPanel)
+      await flushPromises()
+
+      wrapper.vm.prefillAlert('GBP/USD', 1.25)
+      const numberInput = wrapper.find('input[type="number"]')
+      const select = wrapper.find('select')
+
+      await numberInput.setValue('1.3')
+      expect((select.element as HTMLSelectElement).value).toBe('above')
+
+      await numberInput.setValue('1.2')
+      expect((select.element as HTMLSelectElement).value).toBe('below')
+    })
+
     test('respects the direction select value when creating alert', async () => {
       mockGetAlerts.mockResolvedValue([])
       mockCreateAlert.mockResolvedValue({

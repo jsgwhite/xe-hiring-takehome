@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { getRates } from './api'
 import AlertsPanel from './components/AlertsPanel.vue'
 import { state } from './state'
@@ -24,6 +24,13 @@ function formattedRate(pair: string) {
   return match ? match.rate.toFixed(4) : '...'
 }
 
+const alertsPanel = ref<InstanceType<typeof AlertsPanel> | null>(null)
+
+function prefillAlert(pair: string) {
+  const rate = state.rates.find((item) => item.pair === pair)?.rate
+  alertsPanel.value?.prefillAlert(pair, rate)
+}
+
 onMounted(() => {
   loadRates()
 })
@@ -39,16 +46,23 @@ defineExpose({ loadRates })
     </header>
 
     <section class="cards">
-      <div class="card" v-for="item in DISPLAYED_PAIRS" :key="item.pair">
+      <button
+        class="card"
+        v-for="item in DISPLAYED_PAIRS"
+        :key="item.pair"
+        type="button"
+        :aria-label="`Create an alert for ${item.pair}`"
+        @click="prefillAlert(item.pair)"
+      >
         <div class="pair">{{ item.label }}</div>
         <div class="rate">{{ formattedRate(item.pair) }}</div>
         <div class="caption">{{ item.caption }}</div>
-      </div>
+      </button>
     </section>
 
     <button class="refresh" @click="loadRates()">Refresh rates</button>
 
-    <AlertsPanel />
+    <AlertsPanel ref="alertsPanel" />
   </main>
 </template>
 
@@ -98,6 +112,17 @@ h1 {
   border: 1px solid #e1e6ee;
   border-radius: 10px;
   padding: 20px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: #16345c;
+  box-shadow: 0 2px 8px rgba(22, 52, 92, 0.12);
 }
 
 .pair {

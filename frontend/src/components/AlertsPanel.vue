@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import type { AlertDto, CreateAlertRequest, AlertDirection } from '../types'
 import { getAlerts, createAlert, deleteAlert } from '../api'
 
@@ -10,18 +10,54 @@ interface FormState {
   direction: AlertDirection
 }
 
+const DEFAULT_FORM: FormState = {
+  base: 'USD',
+  quote: 'CAD',
+  threshold: 1.3,
+  direction: 'above',
+}
+
 const alerts = ref<AlertDto[]>([])
 const loading = ref(true)
-const form = ref<FormState>({
-  base: '',
-  quote: '',
-  threshold: '',
-  direction: 'above',
-})
+const form = ref<FormState>({ ...DEFAULT_FORM })
+const selectedRate = ref<number | null>(null)
 const formError = ref('')
 const validationError = ref('')
 const loadError = ref('')
 const deleteErrors = ref<Record<string, string>>({})
+
+function prefillAlert(pair: string, rate?: number) {
+  const [base, quote] = pair.split('/')
+  form.value.base = base ?? ''
+  form.value.quote = quote ?? ''
+  if (rate !== undefined) {
+    selectedRate.value = rate
+    form.value.threshold = Number(rate.toFixed(4))
+  } else {
+    selectedRate.value = null
+  }
+  validationError.value = ''
+  formError.value = ''
+}
+
+defineExpose({ prefillAlert })
+
+watch(
+  () => form.value.threshold,
+  (threshold) => {
+    if (selectedRate.value === null) {
+      return
+    }
+
+    const numericThreshold = Number(threshold)
+    if (!Number.isFinite(numericThreshold) || numericThreshold === selectedRate.value) {
+      return
+    }
+
+    // Match the direction to the threshold's position relative to the current rate.
+    form.value.direction = numericThreshold > selectedRate.value ? 'above' : 'below'
+  },
+)
 
 function isValidCurrencyCode(code: string): boolean {
   return /^[A-Za-z]{3}$/.test(code)
@@ -72,7 +108,8 @@ async function handleCreateAlert() {
   try {
     const newAlert = await createAlert(request)
     alerts.value.push(newAlert)
-    form.value = { base: '', quote: '', threshold: '', direction: 'above' }
+    selectedRate.value = null
+    form.value = { ...DEFAULT_FORM }
     validationError.value = ''
   } catch (error) {
     formError.value = error instanceof Error ? error.message : 'Failed to create alert'
