@@ -218,9 +218,9 @@ onMounted(async () => {
             <div class="alert-info">
               <div class="alert-pair">{{ alert.pair }}</div>
               <div class="alert-details">
-                <span class="threshold">{{ alert.direction }} {{ alert.threshold }}</span>
+                <span class="threshold">{{ alert.direction }} {{ alert.threshold.toFixed(4) }}</span>
                 <span v-if="alert.currentRate !== null" class="current-rate">
-                  evaluated at: {{ alert.currentRate }}
+                  evaluated at: {{ alert.currentRate.toFixed(4) }}
                 </span>
               </div>
               <div class="alert-status">
