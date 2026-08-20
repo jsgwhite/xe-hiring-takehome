@@ -1,6 +1,9 @@
 # .NET
 bin/
 obj/
+TestResults/
+coverage/
+*.trx
 
 # Node
 node_modules/
