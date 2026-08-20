@@ -1,7 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import AlertsPanel from './AlertsPanel.vue'
-import { state } from '../state'
 
 vi.mock('../api', () => ({
   getAlerts: vi.fn(),
@@ -17,7 +16,6 @@ const mockDeleteAlert = vi.mocked(deleteAlert)
 
 beforeEach(() => {
   vi.clearAllMocks()
-  state.rates = []
 })
 
 describe('AlertsPanel', () => {
@@ -157,14 +155,10 @@ describe('AlertsPanel', () => {
         },
       ])
 
-      state.rates = [
-        { pair: 'GBP/CAD', rate: 1.85, asOf: '2024-01-01T10:00:00Z' }
-      ]
-
       const wrapper = mount(AlertsPanel)
       await flushPromises()
 
-      expect(wrapper.text()).toContain('last checked: 1.85')
+      expect(wrapper.text()).toContain('rate: 1.85')
     })
   })
 

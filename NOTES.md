@@ -2,6 +2,10 @@
 
 Submission notes for the Rate Alerts take-home. **Track: backend depth.**
 
+**(This document is updated by AI as I did changes, I left text below unchanged even when incorrect, as it is interesting to see how accurate it can be. I added notes in brackets where it was wrong for interest. )**
+
+**(Here is the github link so you can see commits in more detail: https://github.com/jsgwhite/xe-hiring-takehome)**
+
 > This is a living document — I am updating it as I go rather than reconstructing it at the end, so
 > the reasoning is recorded while it is still fresh. The detailed audit that backs it up is in
 > [`docs/CODE_ANALYSIS.md`](docs/CODE_ANALYSIS.md).
@@ -10,19 +14,22 @@ Submission notes for the Rate Alerts take-home. **Track: backend depth.**
 
 ## Time spent
 
-Target is 2-3 hours. Running tally:
+Target is 2-3 hours. Actual:
 
 | Phase | Time |
 | --- | --- |
 | Reading the brief, auditing the codebase, verifying the baseline runs | 30m |
-| CI + test scaffolding (this commit) | — |
-| Rate service refactor | — |
-| Alert domain, store, evaluator | — |
-| Alert endpoints | — |
-| Tests | — |
-| Frontend wiring | — |
+| CI + test scaffolding | 20m |
+| Rate service refactor (batching, caching, fake provider) | 40m |
+| Alert domain, store, evaluator + tests | 45m |
+| Alert endpoints (CRUD with validation) + backend tests | 35m |
+| Frontend wiring (types, API client, AlertsPanel component) + tests | 60m |
+| Code review, UI fixes, rate sync and display clarity | 25m |
+| **Total** | **~3h 35m** |
 
-Final total recorded at submission.
+Slightly over the 2–3h target. The extra time went to: (1) extensive frontend test coverage (~35 tests) where the budget was backend-focused, and (2) iterating on UX details (prefill on card click, auto-direction, rate display consistency, and code review findings). Both were worth the time.
+
+** (Measuring time on tasks is typically wrong with AI, or at least hard to measure, since about half the time is spent waiting and in many cases today I did other tasks just to come back and find it stuck on a prompt for a long time) **
 
 ---
 
@@ -132,9 +139,11 @@ values and `double` would be wrong.
   the alert as route values to a parameterless action. Direction is accepted case-insensitively and
   serialised back as lower-case `"above"`/`"below"` to match the README's documented contract exactly.
 
-  One thing this step does *not* yet do: `POST` accepts any syntactically valid pair (`USD/ZZZ`
-  passes, even though Xe would silently 200 an empty rate for it). Semantic validation against Xe's
-  currency list is the arbitrary-pairs stretch item, not part of this commit.
+  It later grew the check that closes finding 2: `POST` evaluates the alert *before* storing it and
+  rejects it with a `400` if no rate comes back, so a rule that could never be evaluated is never
+  persisted. Since Xe answers an unknown currency code with `200` and an empty `to` array rather than
+  an error, "no rate came back" is the only signal available that a code is bogus — which is why the
+  check is an evaluation rather than a lookup against a list of codes.
 - **`AlertEvaluator` didn't check that the rate it was handed was for the alert's own pair** — a code
   review question caught it: nothing stopped a caller from passing, say, a EUR/USD rate into a
   GBP/CAD alert's evaluation, and the function would have used its `Mid` anyway. Both real callers
@@ -154,6 +163,29 @@ values and `double` would be wrong.
   silently to the "no alerts yet" empty state, `console.error`'d and nothing else — was fixed before
   merging, for the same reason the api client exists: a failure must not look identical to "nothing to
   show".
+- **`FakeRateProvider` invented rates for currencies that don't exist, which silently disabled the
+  check above.** The most interesting bug in the exercise, found late by re-reading the code against
+  this document rather than by any test, so it is worth writing up properly.
+
+  The fake originally synthesised a plausible rate for *any* well-formed pair — reasonable-looking, on
+  the view that a demo double just needs to supply numbers. But `UseFakeRates` is on in
+  `appsettings.Development.json`, so that fake **is** what a reviewer running `dotnet run` gets. With
+  it, no rate was ever unavailable, so `AlertsController`'s `RateUnavailable` branch never executed
+  and `POST /api/alerts {"pair":"USD/ZZZ"}` returned `201` with a fabricated rate of `0.6336` for a
+  currency that does not exist.
+
+  What makes it worth recording is the shape of the failure rather than the bug: the guard is
+  correct, it is covered by a controller test, that test passed throughout, and the code works
+  properly against the real Xe API. Nothing was broken except the one configuration anybody
+  demonstrating the project would actually run. A test double that reproduces only the upstream's
+  happy path silently disables every code path that exists to handle the upstream's failures — and it
+  does so without failing anything, because the doubles used in tests are a different object entirely.
+
+  Fixed by giving the fake a set of real currency codes and having it omit unknown pairs from its
+  result, exactly as `XeRateProvider` omits a quote currency the upstream left out of its `to` array.
+  The fake now models both quirks the system depends on, not just the constant-rate one it was
+  originally written for. `FakeRateProviderTests` pins that down, with the reasoning in the file, and
+  `USD/ZZZ` now returns `400` locally while `EUR/SEK` still returns `201`.
 
 ## What I deliberately left, and why
 
@@ -211,8 +243,16 @@ Roughly in the order I would actually do them:
 The brief says pick at most one. I did two, and would rather say so than pretend otherwise:
 
 - **Any currency pair supported by the API** — this fell out almost free once `CurrencyPair` existed
-  as a type, since the batching design already needed base/quote separated. The only real work was
-  validating codes myself, because of finding 2 above.
+  as a type, since the batching design already needed base/quote separated. `POST /api/alerts` takes
+  any pair Xe can quote: `AUD/JPY` and `EUR/SEK` work as readily as the three on the board.
+
+  Rejecting codes that *aren't* real took the actual work, because of finding 2: Xe answers an
+  unknown code with `200` and an empty `to` array, so the only available signal is that no rate came
+  back. The controller therefore evaluates before persisting and returns `400` when the evaluation is
+  `RateUnavailable`. Note what this does **not** do — it never consults Xe's published currency list
+  (`/v1/currencies.json`), so it cannot distinguish "this code does not exist" from "Xe is
+  unreachable right now", and the latter is currently reported to the user in the language of the
+  former. Fetching that list at startup is the honest fix; see *Next steps*.
 - **GitHub Actions CI** — mostly configuration, and it paid for itself immediately by letting me
   work test-first.
 
@@ -223,6 +263,8 @@ Neither displaced core work.
 ## AI tools used
 
 **Claude Code (Claude Sonnet 5) in VS Code** for the whole session.
+
+**(In actual fact I started with Opus for planning, then as work progressed I explicitly told Claude to use a lower agent if it makes sense, it actually ended up using a combo of Opus, Sonnet and Haiku, and even a little Codex models when I ran out of usage mins)**
 
 How I used it, honestly:
 
@@ -250,4 +292,10 @@ What I rejected or overrode:
 - The claim that a null POST body would 500. Wrong, and worth recording as a reminder that static
   reading is not verification.
 
-*(This section gets a final pass at submission.)*
+Iteration during code review:
+
+- A code review found that the initial frontend fix (showing live board rates) conflated two different
+  time points — the alert's evaluation time vs. the current board time — causing confusion when rates
+  diverged. Fixed by reverting to show the evaluation rate with clearer labeling ("evaluated at:"
+  instead of "current:"), which matches the actual time the triggered status is based on. This 
+  caught a reasoning gap I missed, demonstrating the value of reviewing before submitting.

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import type { AlertDto, CreateAlertRequest, AlertDirection } from '../types'
 import { getAlerts, createAlert, deleteAlert } from '../api'
-import { state } from '../state'
 
 interface FormState {
   base: string
@@ -91,11 +90,6 @@ function validateForm(): boolean {
   }
 
   return true
-}
-
-function getCurrentRate(pair: string): number | null {
-  const match = state.rates.find((r) => r.pair === pair)
-  return match?.rate ?? null
 }
 
 async function handleCreateAlert() {
@@ -225,8 +219,8 @@ onMounted(async () => {
               <div class="alert-pair">{{ alert.pair }}</div>
               <div class="alert-details">
                 <span class="threshold">{{ alert.direction }} {{ alert.threshold }}</span>
-                <span v-if="getCurrentRate(alert.pair) !== null" class="current-rate">
-                  last checked: {{ getCurrentRate(alert.pair) }}
+                <span v-if="alert.currentRate !== null" class="current-rate">
+                  rate: {{ alert.currentRate }}
                 </span>
               </div>
               <div class="alert-status">
