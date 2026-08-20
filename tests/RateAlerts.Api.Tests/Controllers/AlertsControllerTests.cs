@@ -63,6 +63,11 @@ public class AlertsControllerTests
         var store = new InMemoryAlertStore();
         var controller = CreateController(store);
 
+        controller = CreateController(store, new Dictionary<CurrencyPair, decimal>
+        {
+            [CurrencyPair.Parse("USD/CAD")] = 1.35m,
+        });
+
         await controller.Create(new CreateAlertRequest("USD/CAD", 1.30m, "above"), CancellationToken.None);
         var listResult = await controller.List(CancellationToken.None);
 
@@ -82,6 +87,19 @@ public class AlertsControllerTests
         var result = await controller.Create(new CreateAlertRequest(pair, 1.5m, "above"), CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_well_formed_but_unknown_currency_pair_without_persisting_it()
+    {
+        var store = new InMemoryAlertStore();
+        var controller = CreateController(store);
+
+        var result = await controller.Create(
+            new CreateAlertRequest("EUR/USX", 1.08m, "above"), CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Empty(store.GetAll());
     }
 
     [Theory]
@@ -119,7 +137,10 @@ public class AlertsControllerTests
     [InlineData("below")]
     public async Task Create_accepts_direction_case_insensitively(string direction)
     {
-        var controller = CreateController();
+        var controller = CreateController(knownRates: new Dictionary<CurrencyPair, decimal>
+        {
+            [CurrencyPair.Parse("GBP/CAD")] = 1.85m,
+        });
 
         var result = await controller.Create(new CreateAlertRequest("GBP/CAD", 1.5m, direction), CancellationToken.None);
 
