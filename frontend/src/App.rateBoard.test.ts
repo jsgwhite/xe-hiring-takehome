@@ -9,6 +9,10 @@ const fakeState = vi.hoisted(() => ({
 }))
 vi.mock('./state', () => ({ state: fakeState }))
 
+// These tests are about the rate board specifically. AlertsPanel fetches on its own mount via the
+// same global fetch stub, which would otherwise get double-counted in the assertions below.
+vi.mock('./components/AlertsPanel.vue', () => ({ default: { template: '<div />' } }))
+
 import App from './App.vue'
 
 function stubFetch(payload: unknown) {

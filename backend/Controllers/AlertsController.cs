@@ -44,8 +44,17 @@ public class AlertsController : ControllerBase
             return BadRequest(new { error = "Direction must be 'above' or 'below'." });
         }
 
-        var alert = _store.Add(new Alert(Guid.NewGuid(), pair, request.Threshold, direction, DateTimeOffset.UtcNow));
+        var alert = new Alert(Guid.NewGuid(), pair, request.Threshold, direction, DateTimeOffset.UtcNow);
         var evaluation = await _alertService.EvaluateAsync(alert, cancellationToken);
+
+        // Xe returns 200 with an empty rate list for unknown currency codes. Do not persist a rule
+        // that can never be evaluated, and let the frontend keep it out of the alert list.
+        if (evaluation.Status == EvaluationStatus.RateUnavailable)
+        {
+            return BadRequest(new { error = $"No rate is available for currency pair '{pair}'." });
+        }
+
+        _store.Add(alert);
 
         // The stub this replaces called CreatedAtAction(nameof(List), new { alert.Id, ... }) -
         // List takes no route parameters, so those values were silently dropped and every created

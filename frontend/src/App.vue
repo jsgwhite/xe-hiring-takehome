@@ -1,41 +1,34 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import { getRates } from './api'
+import AlertsPanel from './components/AlertsPanel.vue'
 import { state } from './state'
 
+// The rate board always shows these three cards, filling in "..." for any pair the backend didn't
+// return (e.g. a partial upstream failure) - this list, not state.rates, drives what renders.
+const DISPLAYED_PAIRS = [
+  { pair: 'USD/CAD', label: 'USD / CAD', caption: '1 US dollar in Canadian dollars' },
+  { pair: 'GBP/USD', label: 'GBP / USD', caption: '1 British pound in US dollars' },
+  { pair: 'EUR/USD', label: 'EUR / USD', caption: '1 euro in US dollars' },
+]
+
 function loadRates() {
-  fetch('/api/rates')
-    .then((r) => r.json())
-    .then((data) => {
-      state.rates = data
-      state.lastUpdated = new Date().toLocaleTimeString()
-    })
+  getRates().then((data) => {
+    state.rates = data
+    state.lastUpdated = new Date().toLocaleTimeString()
+  })
 }
 
-function getUsdCad() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'USD/CAD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
+function formattedRate(pair: string) {
+  const match = state.rates.find((rate) => rate.pair === pair)
+  return match ? match.rate.toFixed(4) : '...'
 }
 
-function getGbpUsd() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'GBP/USD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
-}
+const alertsPanel = ref<InstanceType<typeof AlertsPanel> | null>(null)
 
-function getEurUsd() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'EUR/USD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
+function prefillAlert(pair: string) {
+  const rate = state.rates.find((item) => item.pair === pair)?.rate
+  alertsPanel.value?.prefillAlert(pair, rate)
 }
 
 onMounted(() => {
@@ -53,26 +46,23 @@ defineExpose({ loadRates })
     </header>
 
     <section class="cards">
-      <div class="card">
-        <div class="pair">USD / CAD</div>
-        <div class="rate">{{ getUsdCad() }}</div>
-        <div class="caption">1 US dollar in Canadian dollars</div>
-      </div>
-
-      <div class="card">
-        <div class="pair">GBP / USD</div>
-        <div class="rate">{{ getGbpUsd() }}</div>
-        <div class="caption">1 British pound in US dollars</div>
-      </div>
-
-      <div class="card">
-        <div class="pair">EUR / USD</div>
-        <div class="rate">{{ getEurUsd() }}</div>
-        <div class="caption">1 euro in US dollars</div>
-      </div>
+      <button
+        class="card"
+        v-for="item in DISPLAYED_PAIRS"
+        :key="item.pair"
+        type="button"
+        :aria-label="`Create an alert for ${item.pair}`"
+        @click="prefillAlert(item.pair)"
+      >
+        <div class="pair">{{ item.label }}</div>
+        <div class="rate">{{ formattedRate(item.pair) }}</div>
+        <div class="caption">{{ item.caption }}</div>
+      </button>
     </section>
 
     <button class="refresh" @click="loadRates()">Refresh rates</button>
+
+    <AlertsPanel ref="alertsPanel" />
   </main>
 </template>
 
@@ -122,6 +112,17 @@ h1 {
   border: 1px solid #e1e6ee;
   border-radius: 10px;
   padding: 20px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: #16345c;
+  box-shadow: 0 2px 8px rgba(22, 52, 92, 0.12);
 }
 
 .pair {
