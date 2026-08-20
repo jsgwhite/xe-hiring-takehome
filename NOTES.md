@@ -118,6 +118,23 @@ values and `double` would be wrong.
   of config, so it can never mask real data anywhere else.
   Measured end to end: `/api/rates` went from 2.75s to 1.07s on the real API (matches the ~1.1s
   predicted from the raw batched call), and 2.6ms on a cache hit.
+- **Alert domain built and tested before the endpoints that use it (TDD).** `Alert` is a rule, not a
+  rule plus its last known answer — `AlertEvaluator.Evaluate` is a pure function computing triggered
+  state at read time, tested for both directions and the exact-equality boundary before it had any
+  caller. `InMemoryAlertStore` swaps the stub's manual locking (which was genuinely inconsistent —
+  `IsTriggered` called inside the lock in `List`, outside it in `Create`) for a lock-free
+  `ConcurrentDictionary`. `AlertService` batches rate lookups across every stored alert into one call
+  per distinct pair, and falls back every alert to `RateUnavailable` if the rate provider throws,
+  rather than 500ing the whole list.
+- **`AlertsController` replaces the frontend-track stub**, fixing two bugs verified against the
+  running stub before the fix: `POST` accepted a negative threshold outright, and the `Location`
+  header on `201` came back as `/api/alerts` — missing the id — because `CreatedAtAction` was passed
+  the alert as route values to a parameterless action. Direction is accepted case-insensitively and
+  serialised back as lower-case `"above"`/`"below"` to match the README's documented contract exactly.
+
+  One thing this step does *not* yet do: `POST` accepts any syntactically valid pair (`USD/ZZZ`
+  passes, even though Xe would silently 200 an empty rate for it). Semantic validation against Xe's
+  currency list is the arbitrary-pairs stretch item, not part of this commit.
 
 ## What I deliberately left, and why
 

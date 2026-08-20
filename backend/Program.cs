@@ -53,6 +53,9 @@ builder.Services.AddSingleton<IRateProvider>(serviceProvider =>
     return new CachingRateProvider(inner, cache, serviceProvider.GetRequiredService<IOptions<XeOptions>>());
 });
 
+builder.Services.AddSingleton<IAlertStore, InMemoryAlertStore>();
+builder.Services.AddSingleton<AlertService>();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();

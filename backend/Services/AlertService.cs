@@ -39,6 +39,14 @@ public sealed class AlertService
             .ToList();
     }
 
+    /// <summary>Evaluates a single alert - used right after creating one, where re-running the full
+    /// batched list evaluation just to return one row would be wasteful.</summary>
+    public async Task<AlertEvaluation> EvaluateAsync(Alert alert, CancellationToken cancellationToken)
+    {
+        var rates = await FetchRatesAsync([alert.Pair], cancellationToken);
+        return AlertEvaluator.Evaluate(alert, rates.GetValueOrDefault(alert.Pair));
+    }
+
     private async Task<IReadOnlyDictionary<CurrencyPair, Rate>> FetchRatesAsync(
         IReadOnlyList<CurrencyPair> pairs, CancellationToken cancellationToken)
     {
