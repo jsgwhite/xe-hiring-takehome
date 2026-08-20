@@ -158,7 +158,7 @@ describe('AlertsPanel', () => {
       const wrapper = mount(AlertsPanel)
       await flushPromises()
 
-      expect(wrapper.text()).toContain('current: 1.85')
+      expect(wrapper.text()).toContain('last checked: 1.85')
     })
   })
 

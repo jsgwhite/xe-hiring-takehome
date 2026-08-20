@@ -220,7 +220,7 @@ onMounted(async () => {
               <div class="alert-details">
                 <span class="threshold">{{ alert.direction }} {{ alert.threshold }}</span>
                 <span v-if="alert.currentRate !== null" class="current-rate">
-                  current: {{ alert.currentRate }}
+                  last checked: {{ alert.currentRate }}
                 </span>
               </div>
               <div class="alert-status">
