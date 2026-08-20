@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { getRates } from './api'
+import AlertsPanel from './components/AlertsPanel.vue'
 import { state } from './state'
 
 // The rate board always shows these three cards, filling in "..." for any pair the backend didn't
@@ -46,6 +47,8 @@ defineExpose({ loadRates })
     </section>
 
     <button class="refresh" @click="loadRates()">Refresh rates</button>
+
+    <AlertsPanel />
   </main>
 </template>
 
