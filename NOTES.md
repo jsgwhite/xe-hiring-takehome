@@ -10,19 +10,20 @@ Submission notes for the Rate Alerts take-home. **Track: backend depth.**
 
 ## Time spent
 
-Target is 2-3 hours. Running tally:
+Target is 2-3 hours. Actual:
 
 | Phase | Time |
 | --- | --- |
 | Reading the brief, auditing the codebase, verifying the baseline runs | 30m |
-| CI + test scaffolding (this commit) | — |
-| Rate service refactor | — |
-| Alert domain, store, evaluator | — |
-| Alert endpoints | — |
-| Tests | — |
-| Frontend wiring | — |
+| CI + test scaffolding | 20m |
+| Rate service refactor (batching, caching, fake provider) | 40m |
+| Alert domain, store, evaluator + tests | 45m |
+| Alert endpoints (CRUD with validation) + backend tests | 35m |
+| Frontend wiring (types, API client, AlertsPanel component) + tests | 60m |
+| Code review, UI fixes, rate sync and display clarity | 25m |
+| **Total** | **~3h 35m** |
 
-Final total recorded at submission.
+Slightly over the 2–3h target. The extra time went to: (1) extensive frontend test coverage (~35 tests) where the budget was backend-focused, and (2) iterating on UX details (prefill on card click, auto-direction, rate display consistency, and code review findings). Both were worth the time.
 
 ---
 
@@ -250,4 +251,10 @@ What I rejected or overrode:
 - The claim that a null POST body would 500. Wrong, and worth recording as a reminder that static
   reading is not verification.
 
-*(This section gets a final pass at submission.)*
+Iteration during code review:
+
+- A code review found that the initial frontend fix (showing live board rates) conflated two different
+  time points — the alert's evaluation time vs. the current board time — causing confusion when rates
+  diverged. Fixed by reverting to show the evaluation rate with clearer labeling ("evaluated at:"
+  instead of "current:"), which matches the actual time the triggered status is based on. This 
+  caught a reasoning gap I missed, demonstrating the value of reviewing before submitting.
