@@ -16,7 +16,7 @@ import App from './App.vue'
 
 test('shows the cards and pokes state', async () => {
   const fetchSpy = vi.fn(() =>
-    Promise.resolve({ json: () => Promise.resolve([{ pair: 'USD/CAD', rate: 9.9 }]) }),
+    Promise.resolve({ ok: true, json: () => Promise.resolve([{ pair: 'USD/CAD', rate: 9.9 }]) }),
   )
   ;(globalThis as any).fetch = fetchSpy
 
@@ -41,7 +41,7 @@ test('shows the cards and pokes state', async () => {
 
   fakeState.lastUpdated = ''
   const fetchSpy2 = vi.fn(() =>
-    Promise.resolve({ json: () => Promise.resolve([{ pair: 'GBP/USD', rate: 7.7 }]) }),
+    Promise.resolve({ ok: true, json: () => Promise.resolve([{ pair: 'GBP/USD', rate: 7.7 }]) }),
   )
   ;(globalThis as any).fetch = fetchSpy2
   const wrapper = mount(App)

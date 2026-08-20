@@ -1,41 +1,26 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { getRates } from './api'
 import { state } from './state'
 
+// The rate board always shows these three cards, filling in "..." for any pair the backend didn't
+// return (e.g. a partial upstream failure) - this list, not state.rates, drives what renders.
+const DISPLAYED_PAIRS = [
+  { pair: 'USD/CAD', label: 'USD / CAD', caption: '1 US dollar in Canadian dollars' },
+  { pair: 'GBP/USD', label: 'GBP / USD', caption: '1 British pound in US dollars' },
+  { pair: 'EUR/USD', label: 'EUR / USD', caption: '1 euro in US dollars' },
+]
+
 function loadRates() {
-  fetch('/api/rates')
-    .then((r) => r.json())
-    .then((data) => {
-      state.rates = data
-      state.lastUpdated = new Date().toLocaleTimeString()
-    })
+  getRates().then((data) => {
+    state.rates = data
+    state.lastUpdated = new Date().toLocaleTimeString()
+  })
 }
 
-function getUsdCad() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'USD/CAD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
-}
-
-function getGbpUsd() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'GBP/USD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
-}
-
-function getEurUsd() {
-  for (let i = 0; i < state.rates.length; i++) {
-    if (state.rates[i].pair === 'EUR/USD') {
-      return state.rates[i].rate.toFixed(4)
-    }
-  }
-  return '...'
+function formattedRate(pair: string) {
+  const match = state.rates.find((rate) => rate.pair === pair)
+  return match ? match.rate.toFixed(4) : '...'
 }
 
 onMounted(() => {
@@ -53,22 +38,10 @@ defineExpose({ loadRates })
     </header>
 
     <section class="cards">
-      <div class="card">
-        <div class="pair">USD / CAD</div>
-        <div class="rate">{{ getUsdCad() }}</div>
-        <div class="caption">1 US dollar in Canadian dollars</div>
-      </div>
-
-      <div class="card">
-        <div class="pair">GBP / USD</div>
-        <div class="rate">{{ getGbpUsd() }}</div>
-        <div class="caption">1 British pound in US dollars</div>
-      </div>
-
-      <div class="card">
-        <div class="pair">EUR / USD</div>
-        <div class="rate">{{ getEurUsd() }}</div>
-        <div class="caption">1 euro in US dollars</div>
+      <div class="card" v-for="item in DISPLAYED_PAIRS" :key="item.pair">
+        <div class="pair">{{ item.label }}</div>
+        <div class="rate">{{ formattedRate(item.pair) }}</div>
+        <div class="caption">{{ item.caption }}</div>
       </div>
     </section>
 
