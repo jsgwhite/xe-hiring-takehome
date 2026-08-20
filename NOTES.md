@@ -135,6 +135,25 @@ values and `double` would be wrong.
   One thing this step does *not* yet do: `POST` accepts any syntactically valid pair (`USD/ZZZ`
   passes, even though Xe would silently 200 an empty rate for it). Semantic validation against Xe's
   currency list is the arbitrary-pairs stretch item, not part of this commit.
+- **`AlertEvaluator` didn't check that the rate it was handed was for the alert's own pair** — a code
+  review question caught it: nothing stopped a caller from passing, say, a EUR/USD rate into a
+  GBP/CAD alert's evaluation, and the function would have used its `Mid` anyway. Both real callers
+  happen to look the rate up by `alert.Pair` already, so this couldn't fire today, but the function
+  itself enforced nothing. Added a guard that throws on a pair mismatch, so a future caller that gets
+  the lookup wrong fails loudly at the point of the mistake instead of producing a confident, silently
+  wrong triggered/not-triggered answer.
+- **Frontend: typed API client, rate board de-duplicated, alert management UI added.** `api.ts` gives
+  every endpoint a real `res.ok` check and a thrown `Error` with the backend's actual message —
+  `App.vue`'s original inline `fetch` had neither, so a `500` just left the board stuck at `...`
+  forever. The three duplicated `getUsdCad`/`getGbpUsd`/`getEurUsd` linear-scan functions and their
+  matching hardcoded cards became one `formattedRate()` lookup and a `v-for`; deliberately still over
+  a fixed pair list rather than `state.rates` directly, since a partial upstream failure means fewer
+  entries in `state.rates` and the board should keep all three cards with `...` for whichever is
+  missing, not silently lose a column. `AlertsPanel.vue` adds create/list/delete with a status badge
+  (triggered / rate unavailable / ok); its one real gap on arrival — a failed initial load fell back
+  silently to the "no alerts yet" empty state, `console.error`'d and nothing else — was fixed before
+  merging, for the same reason the api client exists: a failure must not look identical to "nothing to
+  show".
 
 ## What I deliberately left, and why
 
@@ -203,7 +222,7 @@ Neither displaced core work.
 
 ## AI tools used
 
-**Claude Opus (Claude Code in VS Code)** for the whole session.
+**Claude Code (Claude Sonnet 5) in VS Code** for the whole session.
 
 How I used it, honestly:
 
@@ -215,6 +234,13 @@ How I used it, honestly:
   reordering. All three were invisible from reading code, and all three changed the design.
 - **Scaffolding.** Test project setup, CI workflow, boilerplate — the parts where typing is the only
   bottleneck.
+- **Delegating self-contained, well-specified pieces to a cheaper model in the background** (Claude
+  Haiku, via subagents) while continuing other work: the in-memory alert store, a coverage pass that
+  closed two real branch-coverage gaps, and the first draft of the alert management UI. Each got a
+  precise spec (exact interface, exact conventions to match, exact test cases) rather than an open
+  brief — quality held up well given that structure. I reviewed each result before merging it; the
+  alerts UI's one real gap (initial load failure falling back silently to the empty state) was caught
+  in that review and fixed before landing, not shipped as-is.
 
 What I rejected or overrode:
 
