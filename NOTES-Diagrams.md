@@ -203,10 +203,14 @@ sequenceDiagram
     end
 ```
 
-**Caveat worth knowing:** with `Xecd:UseFakeRates` on — the default in Development —
-`FakeRateProvider` synthesises a plausible rate for *any* well-formed pair, so the
-`RateUnavailable` branch above never fires locally and an unknown code such as `USD/ZZZ` is
-accepted. That branch only does its job against the real Xe API. See NOTES.md.
+**A trap this diagram originally hid:** the `RateUnavailable` branch depends entirely on the
+provider *withholding* a rate. `FakeRateProvider` — active in Development, so it is what a local run
+exercises — used to synthesise a rate for any well-formed pair, which meant that branch never fired
+locally and `USD/ZZZ` was accepted with an invented rate. The controller was correct and its test
+passed the whole time; the double was the problem. It now omits unknown pairs exactly as
+`XeRateProvider` does, so the path above behaves the same locally as against real Xe. Written up in
+NOTES.md, because the general form — a happy-path-only double disabling failure handling without
+failing any test — is easy to repeat.
 
 ---
 

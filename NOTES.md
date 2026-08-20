@@ -139,9 +139,11 @@ values and `double` would be wrong.
   the alert as route values to a parameterless action. Direction is accepted case-insensitively and
   serialised back as lower-case `"above"`/`"below"` to match the README's documented contract exactly.
 
-  One thing this step does *not* yet do: `POST` accepts any syntactically valid pair (`USD/ZZZ`
-  passes, even though Xe would silently 200 an empty rate for it). Semantic validation against Xe's
-  currency list is the arbitrary-pairs stretch item, not part of this commit.
+  It later grew the check that closes finding 2: `POST` evaluates the alert *before* storing it and
+  rejects it with a `400` if no rate comes back, so a rule that could never be evaluated is never
+  persisted. Since Xe answers an unknown currency code with `200` and an empty `to` array rather than
+  an error, "no rate came back" is the only signal available that a code is bogus — which is why the
+  check is an evaluation rather than a lookup against a list of codes.
 - **`AlertEvaluator` didn't check that the rate it was handed was for the alert's own pair** — a code
   review question caught it: nothing stopped a caller from passing, say, a EUR/USD rate into a
   GBP/CAD alert's evaluation, and the function would have used its `Mid` anyway. Both real callers
@@ -161,6 +163,29 @@ values and `double` would be wrong.
   silently to the "no alerts yet" empty state, `console.error`'d and nothing else — was fixed before
   merging, for the same reason the api client exists: a failure must not look identical to "nothing to
   show".
+- **`FakeRateProvider` invented rates for currencies that don't exist, which silently disabled the
+  check above.** The most interesting bug in the exercise, found late by re-reading the code against
+  this document rather than by any test, so it is worth writing up properly.
+
+  The fake originally synthesised a plausible rate for *any* well-formed pair — reasonable-looking, on
+  the view that a demo double just needs to supply numbers. But `UseFakeRates` is on in
+  `appsettings.Development.json`, so that fake **is** what a reviewer running `dotnet run` gets. With
+  it, no rate was ever unavailable, so `AlertsController`'s `RateUnavailable` branch never executed
+  and `POST /api/alerts {"pair":"USD/ZZZ"}` returned `201` with a fabricated rate of `0.6336` for a
+  currency that does not exist.
+
+  What makes it worth recording is the shape of the failure rather than the bug: the guard is
+  correct, it is covered by a controller test, that test passed throughout, and the code works
+  properly against the real Xe API. Nothing was broken except the one configuration anybody
+  demonstrating the project would actually run. A test double that reproduces only the upstream's
+  happy path silently disables every code path that exists to handle the upstream's failures — and it
+  does so without failing anything, because the doubles used in tests are a different object entirely.
+
+  Fixed by giving the fake a set of real currency codes and having it omit unknown pairs from its
+  result, exactly as `XeRateProvider` omits a quote currency the upstream left out of its `to` array.
+  The fake now models both quirks the system depends on, not just the constant-rate one it was
+  originally written for. `FakeRateProviderTests` pins that down, with the reasoning in the file, and
+  `USD/ZZZ` now returns `400` locally while `EUR/SEK` still returns `201`.
 
 ## What I deliberately left, and why
 
@@ -218,8 +243,16 @@ Roughly in the order I would actually do them:
 The brief says pick at most one. I did two, and would rather say so than pretend otherwise:
 
 - **Any currency pair supported by the API** — this fell out almost free once `CurrencyPair` existed
-  as a type, since the batching design already needed base/quote separated. The only real work was
-  validating codes myself, because of finding 2 above.
+  as a type, since the batching design already needed base/quote separated. `POST /api/alerts` takes
+  any pair Xe can quote: `AUD/JPY` and `EUR/SEK` work as readily as the three on the board.
+
+  Rejecting codes that *aren't* real took the actual work, because of finding 2: Xe answers an
+  unknown code with `200` and an empty `to` array, so the only available signal is that no rate came
+  back. The controller therefore evaluates before persisting and returns `400` when the evaluation is
+  `RateUnavailable`. Note what this does **not** do — it never consults Xe's published currency list
+  (`/v1/currencies.json`), so it cannot distinguish "this code does not exist" from "Xe is
+  unreachable right now", and the latter is currently reported to the user in the language of the
+  former. Fetching that list at startup is the honest fix; see *Next steps*.
 - **GitHub Actions CI** — mostly configuration, and it paid for itself immediately by letting me
   work test-first.
 
