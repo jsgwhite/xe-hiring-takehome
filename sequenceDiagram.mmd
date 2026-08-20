@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    participant UI as AlertsPanel
+    participant C as AlertsController
+    participant S as AlertService
+    participant Cache as CachingRateProvider
+    participant Xe as XeRateProvider
+    participant API as Xe API
+
+    UI->>C: GET /api/alerts
+    C->>S: GetAllWithEvaluationsAsync()
+    S->>S: store.GetAll()
+    S->>S: distinct pairs across all alerts
+
+    S->>Cache: GetRatesAsync(distinct pairs)
+    Cache->>Cache: partition into cached / uncached
+
+    alt some pairs uncached
+        Cache->>Xe: GetRatesAsync(uncached only)
+        Xe->>Xe: group by base currency
+        par one call per base currency
+            Xe->>API: convert_from.json?from=USD&to=CAD,JPY
+            API-->>Xe: 200, "to" list (may be reordered)
+        and
+            Xe->>API: convert_from.json?from=GBP&to=USD
+            API-->>Xe: 200, "to" list
+        end
+        Xe->>Xe: match on quotecurrency, never by index
+        Xe-->>Cache: rates for the pairs Xe knew
+        Cache->>Cache: store each with TTL
+    end
+
+    Cache-->>S: rates
+    loop each alert
+        S->>S: AlertEvaluator.Evaluate(alert, rate or null)
+    end
+    S-->>C: alerts + evaluations
+    C-->>UI: 200, AlertDto[]
